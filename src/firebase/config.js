@@ -6,7 +6,9 @@ import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCnYzWpxFTBcpXTDE9D31HhBILPV0ZhYs4",
-  authDomain: "mods-7c70d.firebaseapp.com",
+  authDomain: typeof window !== "undefined" && window.location.hostname !== "localhost" && !window.location.hostname.includes("127.0.0.1") 
+    ? window.location.hostname 
+    : "mods-7c70d.firebaseapp.com",
   databaseURL: "https://mods-7c70d-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "mods-7c70d",
   storageBucket: "mods-7c70d.firebasestorage.app",
