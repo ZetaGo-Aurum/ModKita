@@ -92,10 +92,8 @@ export default function Home() {
       className="pb-24"
     >
       {/* Hyper-Immersive Hero Section */}
-      <section className="relative py-24 sm:py-32 px-6 sm:px-12 mb-20 rounded-[48px] overflow-hidden border border-outline-variant/20 shadow-[0_0_80px_rgba(168,199,250,0.1)]">
-        {/* Animated Background Mesh Grid */}
+      <section className="relative py-24 sm:py-32 px-6 sm:px-12 mb-20 rounded-[48px] overflow-hidden border border-outline-variant/20 shadow-[0_0_80px_rgba(168,199,250,0.15)] bg-surface/20 backdrop-blur-xl">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+CjxwYXRoIGQ9Ik00MCAwaC00MHY0MGg0MHoiIGZpbGw9Im5vbmUiLz4KPHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPgo8cGF0aCBkPSJNMCAwTDQwIDQwIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiIHN0cm9rZS13aWR0aD0iMScvPgo8cGF0aCBkPSJNMCA0MEw0MCAwIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiIHN0cm9rZS13aWR0aD0iMScvPgo8L3N2Zz4=')] opacity-20" />
-        
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/80 to-background" />
 
         {/* Floating Glowing Orbs */}
@@ -165,7 +163,7 @@ export default function Home() {
 
       {/* Mods Section with Search & Categories */}
       <section id="mods" className="scroll-mt-32 relative px-2">
-        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between mb-12 gap-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 gap-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-primary/10 rounded-2xl border border-primary/20">
               <Zap size={32} className="text-primary" />
@@ -174,7 +172,7 @@ export default function Home() {
           </div>
           
           {/* Instant Search Bar */}
-          <div className="relative w-full xl:max-w-md">
+          <div className="relative w-full md:max-w-md">
             <input 
               type="text" 
               value={searchQuery}
@@ -182,7 +180,8 @@ export default function Home() {
               placeholder="Search mods by name, description, tags..." 
               className="w-full bg-surface-variant/30 border border-outline-variant/40 rounded-full pl-12 pr-4 py-3.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-outline text-on-surface text-base"
             />
-            <Search size={20} className="absolute left-4 top-4.5 text-outline" />
+            {/* Perfectly aligned Search Icon (Fixes standard layout misalignment) */}
+            <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-outline" />
           </div>
         </div>
 

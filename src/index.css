@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --primary: 168 199 250; /* Light blue */
+    --primary: 168 199 250; /* Futuristic Light Blue */
     --on-primary: 6 46 111;
     --primary-container: 8 66 160;
     --on-primary-container: 211 227 253;
@@ -24,9 +24,9 @@
     --error-container: 147 0 10;
     --on-error-container: 255 218 214;
 
-    --background: 17 19 24;
+    --background: 10 11 15; /* Dark Space Onyx */
     --on-background: 226 226 233;
-    --surface: 17 19 24;
+    --surface: 16 18 24;
     --on-surface: 226 226 233;
     --surface-variant: 68 71 78;
     --on-surface-variant: 196 198 208;
@@ -39,17 +39,24 @@
     @apply bg-[rgb(var(--background))] text-[rgb(var(--on-background))] font-sans antialiased overflow-x-hidden selection:bg-primary/30 selection:text-primary;
   }
 
-  /* Fixed background using performant layer to prevent scroll repaints and jank on mobile */
+  /* GPU-accelerated Premium Cyber Grid Background */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     z-index: -10;
+    background-color: rgb(var(--background));
     background-image: 
-      radial-gradient(circle at 15% 50%, rgba(168, 199, 250, 0.03) 0%, transparent 50%),
-      radial-gradient(circle at 85% 30%, rgba(196, 198, 235, 0.03) 0%, transparent 50%);
+      /* Subtle grid lines */
+      linear-gradient(to right, rgba(168, 199, 250, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(168, 199, 250, 0.03) 1px, transparent 1px),
+      /* Deep radial ambient glows */
+      radial-gradient(circle at 50% -10%, rgba(168, 199, 250, 0.12) 0%, transparent 60%),
+      radial-gradient(circle at 10% 70%, rgba(196, 198, 235, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 90% 75%, rgba(168, 199, 250, 0.04) 0%, transparent 50%);
+    background-size: 48px 48px, 48px 48px, 100% 100%, 100% 100%, 100% 100%;
     pointer-events: none;
-    transform: translate3d(0, 0, 0); /* Force GPU acceleration */
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -82,20 +89,20 @@
 
   /* Webkit Scrollbar */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: rgba(var(--surface-variant), 0.2);
+    background: rgba(var(--surface-variant), 0.1);
     border-radius: 10px;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(var(--outline), 0.5);
+    background: rgba(var(--outline), 0.3);
     border-radius: 10px;
     border: 2px solid rgb(var(--background));
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(var(--primary), 0.8);
+    background: rgba(var(--primary), 0.7);
   }
 
   .custom-scrollbar::-webkit-scrollbar {
