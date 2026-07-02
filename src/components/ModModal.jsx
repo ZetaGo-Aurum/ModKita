@@ -62,7 +62,15 @@ export default function ModModal({ mod, isOpen, onClose }) {
   };
 
   const embedUrl = getYouTubeEmbedUrl(mod.videoUrl);
-  const isDirectVideo = mod.videoUrl && (mod.videoUrl.endsWith('.mp4') || mod.videoUrl.endsWith('.webm') || mod.videoUrl.endsWith('.ogg'));
+  const isDirectVideo = mod.videoUrl && (
+    mod.videoUrl.toLowerCase().endsWith('.mp4') || 
+    mod.videoUrl.toLowerCase().endsWith('.webm') || 
+    mod.videoUrl.toLowerCase().endsWith('.ogg') ||
+    mod.videoUrl.includes('firebasestorage.googleapis.com') ||
+    mod.videoUrl.includes('catbox') ||
+    mod.videoUrl.includes('uguu') ||
+    mod.videoUrl.includes('top4top')
+  );
 
   return (
     <AnimatePresence>

@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [userDataLoading, setUserDataLoading] = useState(true);
 
-  // Helper to check if email is whitelisted as admin
+  // Helper to check if email is whitelisted as admin (Only called for new registrations)
   const checkAdminWhitelist = async (email) => {
     try {
       const whitelistDoc = await getDoc(doc(db, 'admin_whitelist', email.toLowerCase()));
@@ -60,8 +60,8 @@ export const AuthProvider = ({ children }) => {
         setUserDataLoading(true);
         let resolved = false;
 
-        // 2.5 second timeout to prevent page loading hanging on slow network
-        const timeout = setTimeout(async () => {
+        // 1.5 second timeout to prevent page loading hanging on slow network (e.g. Telkomsel blocks)
+        const timeout = setTimeout(() => {
           if (!resolved) {
             console.warn("Firestore fetch timed out. Falling back to local/static verification.");
             const isDev = user.email === 'deltaastra24@gmail.com';
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
             });
             setUserDataLoading(false);
           }
-        }, 2500);
+        }, 1500);
 
         try {
           const userRef = doc(db, 'users', user.uid);
@@ -80,19 +80,13 @@ export const AuthProvider = ({ children }) => {
           clearTimeout(timeout);
 
           const isDev = user.email === 'deltaastra24@gmail.com';
-          const isWhitelisted = await checkAdminWhitelist(user.email);
 
           if (userDoc.exists()) {
-            const data = userDoc.data();
-            // Sync role dynamically if whitelisted state changes
-            if (!isDev && isWhitelisted && data.role !== 'admin') {
-              data.role = 'admin';
-              data.status = 'approved';
-              await setDoc(userRef, data, { merge: true });
-            }
-            setUserData(data);
+            // Already registered, read role instantly without querying admin_whitelist
+            setUserData(userDoc.data());
           } else {
-            // Create user document if it does not exist
+            // New user registration - check whitelist here only
+            const isWhitelisted = await checkAdminWhitelist(user.email);
             const newData = {
               email: user.email,
               role: isDev ? 'dev' : (isWhitelisted ? 'admin' : 'member'),
