@@ -3,8 +3,9 @@ import { collection, query, onSnapshot, doc, updateDoc, addDoc, deleteDoc, setDo
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { uploadFileToB2, deleteFileFromB2 } from '../lib/b2Storage';
+import { uploadFileToCloudinary } from '../lib/cloudinaryStorage';
 import toast from 'react-hot-toast';
-import { Upload, Trash2, CheckCircle, XCircle, Users, Box, PlusCircle, Shield, Inbox, Link as LinkIcon } from 'lucide-react';
+import { Upload, Trash2, CheckCircle, XCircle, Users, Box, PlusCircle, Shield, Inbox, Link as LinkIcon, HardDrive, Image as ImageIcon, Video as VideoIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +25,12 @@ export default function AdminDashboard() {
   
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  
+  // Storage settings selection
+  const [coverStorageType, setCoverStorageType] = useState('firebase'); // 'firebase' | 'cloudinary'
+  const [videoStorageType, setVideoStorageType] = useState('firebase'); // 'firebase' | 'cloudinary'
+  const [modStorageType, setModStorageType] = useState('b2'); // 'b2' | 'cloudinary'
+
   const [formData, setFormData] = useState({
     title: '', slug: '', version: '', description: '', category: '', tags: '', changelog: '', accessType: 'restricted', videoUrl: '', externalDownloadUrl: ''
   });
@@ -111,13 +118,15 @@ export default function AdminDashboard() {
   const handleDeleteMod = async (mod) => {
     if (!window.confirm('Delete this mod? Cannot be undone.')) return;
     try {
-      // Delete cover from Firebase Storage
-      try { await deleteObject(ref(storage, mod.coverStoragePath)); } catch(e){}
-      // Delete video from Firebase Storage (if uploaded)
+      // Delete cover from Firebase Storage (if stored there)
+      if (mod.coverStoragePath) {
+        try { await deleteObject(ref(storage, mod.coverStoragePath)); } catch(e){}
+      }
+      // Delete video from Firebase Storage (if stored there)
       if (mod.videoStoragePath) {
         try { await deleteObject(ref(storage, mod.videoStoragePath)); } catch(e){}
       }
-      // Delete mod from B2 (if uploaded to B2)
+      // Delete mod from B2 (if stored there)
       if (mod.fileStorageName) {
         try { await deleteFileFromB2(mod.fileStorageName); } catch(e){}
       }
@@ -131,60 +140,72 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!coverFile) return toast.error('Cover image is required.');
     
-    // Check if either B2 file OR external URL is provided
+    // Check if either mod file OR external URL is provided
     if (!modFile && !formData.externalDownloadUrl) {
       return toast.error('Please upload a mod file or provide an external download link.');
     }
 
     setIsUploading(true);
+    setUploadProgress(5);
     try {
       const timestamp = Date.now();
       
-      // 1. Upload Cover to Firebase Storage
-      const coverStoragePath = `covers/${timestamp}_${coverFile.name}`;
-      const coverRef = ref(storage, coverStoragePath);
-      const coverTask = uploadBytesResumable(coverRef, coverFile);
-      await new Promise((resolve, reject) => {
-        coverTask.on('state_changed', () => setUploadProgress(5), reject, resolve);
-      });
-      const coverUrl = await getDownloadURL(coverRef);
+      // 1. Upload Cover
+      let coverUrl = '';
+      let coverStoragePath = '';
+      if (coverStorageType === 'cloudinary') {
+        coverUrl = await uploadFileToCloudinary(coverFile, 'covers', 'image');
+      } else {
+        coverStoragePath = `covers/${timestamp}_${coverFile.name}`;
+        const coverRef = ref(storage, coverStoragePath);
+        const coverTask = uploadBytesResumable(coverRef, coverFile);
+        await new Promise((resolve, reject) => {
+          coverTask.on('state_changed', () => {}, reject, resolve);
+        });
+        coverUrl = await getDownloadURL(coverRef);
+      }
+      setUploadProgress(30);
 
-      // 2. Upload Video Preview File to Firebase Storage (if provided)
+      // 2. Upload Video Preview
       let videoUrl = formData.videoUrl || '';
       let videoStoragePath = '';
       if (videoFile) {
-        setUploadProgress(15);
-        videoStoragePath = `videos/${timestamp}_${videoFile.name}`;
-        const videoRef = ref(storage, videoStoragePath);
-        const videoTask = uploadBytesResumable(videoRef, videoFile);
-        await new Promise((resolve, reject) => {
-          videoTask.on('state_changed', (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 20 + 15; // Maps 0-100 to 15-35
-            setUploadProgress(Math.round(progress));
-          }, reject, resolve);
-        });
-        videoUrl = await getDownloadURL(videoRef);
+        if (videoStorageType === 'cloudinary') {
+          videoUrl = await uploadFileToCloudinary(videoFile, 'videos', 'video');
+        } else {
+          videoStoragePath = `videos/${timestamp}_${videoFile.name}`;
+          const videoRef = ref(storage, videoStoragePath);
+          const videoTask = uploadBytesResumable(videoRef, videoFile);
+          await new Promise((resolve, reject) => {
+            videoTask.on('state_changed', () => {}, reject, resolve);
+          });
+          videoUrl = await getDownloadURL(videoRef);
+        }
       }
+      setUploadProgress(60);
 
-      // 3. Handle Mod File Upload (Backblaze B2) if provided
+      // 3. Upload Mod File
       let fileUrl = formData.externalDownloadUrl || '';
       let b2FileName = '';
       let fileSize = 0;
 
       if (modFile) {
-        // Check if B2 Key is set
-        if (import.meta.env.VITE_B2_APPLICATION_KEY === "isi_dengan_secret_application_key_anda" || !import.meta.env.VITE_B2_APPLICATION_KEY) {
-          toast.error('B2 Application Key not set in .env! Cannot upload mod to B2. Try using an external link instead.');
-          setIsUploading(false);
-          return;
-        }
-
-        b2FileName = `${timestamp}_${modFile.name}`;
-        setUploadProgress(40);
-        fileUrl = await uploadFileToB2(modFile, b2FileName);
-        setUploadProgress(90);
         fileSize = modFile.size;
+        if (modStorageType === 'cloudinary') {
+          fileUrl = await uploadFileToCloudinary(modFile, 'archives', 'raw');
+        } else {
+          // Check if B2 Key is set
+          if (import.meta.env.VITE_B2_APPLICATION_KEY === "isi_dengan_secret_application_key_anda" || !import.meta.env.VITE_B2_APPLICATION_KEY) {
+            toast.error('B2 Application Key not set in .env! Cannot upload mod to B2. Try using Cloudinary or an external link.');
+            setIsUploading(false);
+            return;
+          }
+
+          b2FileName = `${timestamp}_${modFile.name}`;
+          fileUrl = await uploadFileToB2(modFile, b2FileName);
+        }
       }
+      setUploadProgress(95);
 
       // Parse tags
       const tagsArray = formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
@@ -304,18 +325,47 @@ export default function AdminDashboard() {
                   <label className="block text-sm text-on-surface-variant mb-1">{t('mod_changelog_input')}</label>
                   <textarea rows={3} value={formData.changelog} onChange={e => setFormData({...formData, changelog: e.target.value})} className="w-full bg-surface-variant/50 border border-outline rounded-xl px-4 py-2.5 focus:border-primary outline-none" placeholder="What is new in this version?" />
                 </div>
+
+                {/* Storage Target Option Selectors */}
+                <div className="p-6 bg-surface-variant/10 rounded-3xl border border-outline-variant/30 space-y-4">
+                  <h3 className="text-sm font-bold text-outline uppercase tracking-wider flex items-center gap-2"><HardDrive size={16}/> Storage Provider Config</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs text-on-surface-variant mb-1">Cover Image Destination</label>
+                      <select value={coverStorageType} onChange={e => setCoverStorageType(e.target.value)} className="w-full bg-surface/50 border border-outline-variant rounded-xl px-3 py-2 outline-none text-sm">
+                        <option value="firebase">Firebase Storage</option>
+                        <option value="cloudinary">Cloudinary</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-on-surface-variant mb-1">Video File Destination</label>
+                      <select value={videoStorageType} onChange={e => setVideoStorageType(e.target.value)} className="w-full bg-surface/50 border border-outline-variant rounded-xl px-3 py-2 outline-none text-sm">
+                        <option value="firebase">Firebase Storage</option>
+                        <option value="cloudinary">Cloudinary</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-on-surface-variant mb-1">Mod Archive Destination</label>
+                      <select value={modStorageType} onChange={e => setModStorageType(e.target.value)} className="w-full bg-surface/50 border border-outline-variant rounded-xl px-3 py-2 outline-none text-sm">
+                        <option value="b2">Backblaze B2 (Main-Cluster)</option>
+                        <option value="cloudinary">Cloudinary</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm text-on-surface-variant mb-1">{t('mod_cover_img')}</label>
+                    <label className="block text-sm text-on-surface-variant mb-1 flex items-center gap-1"><ImageIcon size={16} /> {t('mod_cover_img')}</label>
                     <input ref={coverInputRef} required type="file" accept="image/*" onChange={e => setCoverFile(e.target.files[0])} className="w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-primary-container file:text-on-primary-container" />
                   </div>
                   <div>
-                    <label className="block text-sm text-on-surface-variant mb-1">{t('mod_video_file')}</label>
+                    <label className="block text-sm text-on-surface-variant mb-1 flex items-center gap-1"><VideoIcon size={16} /> {t('mod_video_file')}</label>
                     <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/ogg" onChange={e => setVideoFile(e.target.files[0])} className="w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-secondary-container file:text-on-secondary-container" />
                   </div>
                   <div>
-                    <label className="block text-sm text-on-surface-variant mb-1">{t('mod_file_archive')}</label>
+                    <label className="block text-sm text-on-surface-variant mb-1 flex items-center gap-1"><Box size={16} /> {t('mod_file_archive')}</label>
                     <input ref={modInputRef} type="file" accept=".zip,.rar,.7z,.apk" onChange={e => setModFile(e.target.files[0])} className="w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-secondary-container file:text-on-secondary-container" />
                   </div>
                 </div>
