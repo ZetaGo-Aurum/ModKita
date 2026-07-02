@@ -7,35 +7,52 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "var(--md-sys-color-primary)",
-        "on-primary": "var(--md-sys-color-on-primary)",
-        "primary-container": "var(--md-sys-color-primary-container)",
-        "on-primary-container": "var(--md-sys-color-on-primary-container)",
-        secondary: "var(--md-sys-color-secondary)",
-        "on-secondary": "var(--md-sys-color-on-secondary)",
-        "secondary-container": "var(--md-sys-color-secondary-container)",
-        "on-secondary-container": "var(--md-sys-color-on-secondary-container)",
-        tertiary: "var(--md-sys-color-tertiary)",
-        "on-tertiary": "var(--md-sys-color-on-tertiary)",
-        "tertiary-container": "var(--md-sys-color-tertiary-container)",
-        "on-tertiary-container": "var(--md-sys-color-on-tertiary-container)",
-        error: "var(--md-sys-color-error)",
-        "on-error": "var(--md-sys-color-on-error)",
-        "error-container": "var(--md-sys-color-error-container)",
-        "on-error-container": "var(--md-sys-color-on-error-container)",
-        background: "var(--md-sys-color-background)",
-        "on-background": "var(--md-sys-color-on-background)",
-        surface: "var(--md-sys-color-surface)",
-        "on-surface": "var(--md-sys-color-on-surface)",
-        "surface-variant": "var(--md-sys-color-surface-variant)",
-        "on-surface-variant": "var(--md-sys-color-on-surface-variant)",
-        outline: "var(--md-sys-color-outline)",
-        "outline-variant": "var(--md-sys-color-outline-variant)",
-        shadow: "var(--md-sys-color-shadow)",
-        scrim: "var(--md-sys-color-scrim)",
-        "inverse-surface": "var(--md-sys-color-inverse-surface)",
-        "inverse-on-surface": "var(--md-sys-color-inverse-on-surface)",
-        "inverse-primary": "var(--md-sys-color-inverse-primary)",
+        primary: "rgb(var(--primary) / <alpha-value>)",
+        "on-primary": "rgb(var(--on-primary) / <alpha-value>)",
+        "primary-container": "rgb(var(--primary-container) / <alpha-value>)",
+        "on-primary-container": "rgb(var(--on-primary-container) / <alpha-value>)",
+        
+        secondary: "rgb(var(--secondary) / <alpha-value>)",
+        "on-secondary": "rgb(var(--on-secondary) / <alpha-value>)",
+        "secondary-container": "rgb(var(--secondary-container) / <alpha-value>)",
+        "on-secondary-container": "rgb(var(--on-secondary-container) / <alpha-value>)",
+        
+        tertiary: "rgb(var(--tertiary) / <alpha-value>)",
+        "on-tertiary": "rgb(var(--on-tertiary) / <alpha-value>)",
+        "tertiary-container": "rgb(var(--tertiary-container) / <alpha-value>)",
+        "on-tertiary-container": "rgb(var(--on-tertiary-container) / <alpha-value>)",
+        
+        error: "rgb(var(--error) / <alpha-value>)",
+        "on-error": "rgb(var(--on-error) / <alpha-value>)",
+        "error-container": "rgb(var(--error-container) / <alpha-value>)",
+        "on-error-container": "rgb(var(--on-error-container) / <alpha-value>)",
+        
+        background: "rgb(var(--background) / <alpha-value>)",
+        "on-background": "rgb(var(--on-background) / <alpha-value>)",
+        
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        "on-surface": "rgb(var(--on-surface) / <alpha-value>)",
+        "surface-variant": "rgb(var(--surface-variant) / <alpha-value>)",
+        "on-surface-variant": "rgb(var(--on-surface-variant) / <alpha-value>)",
+        
+        outline: "rgb(var(--outline) / <alpha-value>)",
+        "outline-variant": "rgb(var(--outline-variant) / <alpha-value>)",
+        scrim: "rgb(var(--scrim) / <alpha-value>)",
+      },
+      animation: {
+        'gradient-x': 'gradient-x 3s ease infinite',
+      },
+      keyframes: {
+        'gradient-x': {
+          '0%, 100%': {
+            'background-size': '200% 200%',
+            'background-position': 'left center'
+          },
+          '50%': {
+            'background-size': '200% 200%',
+            'background-position': 'right center'
+          }
+        }
       }
     },
   },
