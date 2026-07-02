@@ -26,6 +26,7 @@ export default function Uptime() {
   });
   
   const [logs, setLogs] = useState([]);
+  const [nextScanProgress, setNextScanProgress] = useState(0);
   const terminalEndRef = useRef(null);
 
   const addLog = (message, type = 'info') => {
@@ -102,9 +103,24 @@ export default function Uptime() {
       }, 'cloudinary', 'Cloudinary Media CDN');
     };
 
+    // Run first check
     checkServices();
-    const interval = setInterval(checkServices, 15000); // refresh every 15s
-    return () => clearInterval(interval);
+
+    // 5-second interval for real-time auto updates
+    const interval = setInterval(checkServices, 5000); 
+
+    // Smooth real-time scanning progress bar animation
+    const progressInterval = setInterval(() => {
+      setNextScanProgress(prev => {
+        if (prev >= 100) return 0;
+        return prev + 2; // Increments to 100% every 5s (approx)
+      });
+    }, 100);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(progressInterval);
+    };
   }, []);
 
   const renderSVGChart = (historyData) => {
@@ -193,6 +209,14 @@ export default function Uptime() {
       exit={{ opacity: 0 }}
       className="max-w-6xl mx-auto py-12 px-4"
     >
+      {/* Real-time Scan Progress Bar (Fixed at top of content) */}
+      <div className="w-full h-1 bg-surface-variant/20 rounded-full overflow-hidden mb-8 relative">
+        <div 
+          className="h-full bg-primary shadow-[0_0_10px_rgba(168,199,250,0.8)] transition-all duration-100 ease-linear"
+          style={{ width: `${nextScanProgress}%` }}
+        />
+      </div>
+
       <div className="text-center mb-16 relative">
         <motion.div 
           animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
@@ -268,7 +292,7 @@ export default function Uptime() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
           </span>
-          Live monitoring active. Auto-refreshing every 15s.
+          Live monitoring active. Auto-refreshing every 5s.
         </div>
       </div>
     </motion.div>
