@@ -22,9 +22,9 @@ export const AuthProvider = ({ children }) => {
           if (userDoc.exists()) {
             setUserData(userDoc.data());
           } else {
-            // Check if predefined admin (fallback)
-            if (user.email === 'admin@modkita.com') {
-              setUserData({ role: 'admin', status: 'approved' });
+            // Check if predefined Dev admin
+            if (user.email === 'deltaastra24@gmail.com') {
+              setUserData({ role: 'dev', status: 'approved' });
             } else {
               setUserData({ role: 'member', status: 'pending' });
             }
