@@ -4,13 +4,16 @@ import { db } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import ModCard from '../components/ModCard';
 import ModModal from '../components/ModModal';
-import { Layers, Sparkles, Send, Gamepad2, Zap } from 'lucide-react';
+import { Layers, Sparkles, Send, Gamepad2, Zap, Search, SlidersHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 export default function Home() {
   const [mods, setMods] = useState([]);
+  const [filteredMods, setFilteredMods] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(true);
   const [selectedMod, setSelectedMod] = useState(null);
   const [showReqModal, setShowReqModal] = useState(false);
@@ -26,11 +29,35 @@ export default function Home() {
         modsData.push({ id: doc.id, ...doc.data() });
       });
       setMods(modsData);
+      setFilteredMods(modsData);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  // Handle Search and Category filtering
+  useEffect(() => {
+    let result = mods;
+
+    // Filter by category
+    if (selectedCategory !== 'All') {
+      result = result.filter(mod => mod.category === selectedCategory);
+    }
+
+    // Filter by search query
+    if (searchQuery.trim() !== '') {
+      const queryLower = searchQuery.toLowerCase();
+      result = result.filter(mod => 
+        mod.title.toLowerCase().includes(queryLower) ||
+        mod.description.toLowerCase().includes(queryLower) ||
+        (Array.isArray(mod.tags) && mod.tags.some(tag => tag.toLowerCase().includes(queryLower))) ||
+        (mod.slug && mod.slug.toLowerCase().includes(queryLower))
+      );
+    }
+
+    setFilteredMods(result);
+  }, [searchQuery, selectedCategory, mods]);
 
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
@@ -55,6 +82,8 @@ export default function Home() {
     }
   };
 
+  const categories = ['All', 'Tools', 'Visuals', 'Gameplay'];
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -63,13 +92,13 @@ export default function Home() {
       className="pb-24"
     >
       {/* Hyper-Immersive Hero Section */}
-      <section className="relative py-32 px-6 sm:px-12 mb-20 rounded-[48px] overflow-hidden border border-outline-variant/20 shadow-[0_0_80px_rgba(168,199,250,0.1)]">
+      <section className="relative py-24 sm:py-32 px-6 sm:px-12 mb-20 rounded-[48px] overflow-hidden border border-outline-variant/20 shadow-[0_0_80px_rgba(168,199,250,0.1)]">
         {/* Animated Background Mesh Grid */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+CjxwYXRoIGQ9Ik00MCAwaC00MHY0MGg0MHoiIGZpbGw9Im5vbmUiLz4KPHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPgo8cGF0aCBkPSJNMCAwTDQwIDQwIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiIHN0cm9rZS13aWR0aD0iMSIvPgo8cGF0aCBkPSJNMCA0MEw0MCAwIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiIHN0cm9rZS13aWR0aD0iMSIvPgo8L3N2Zz4=')] opacity-20" />
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+CjxwYXRoIGQ9Ik00MCAwaC00MHY0MGg0MHoiIGZpbGw9Im5vbmUiLz4KPHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPgo8cGF0aCBkPSJNMCAwTDQwIDQwIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiIHN0cm9rZS13aWR0aD0iMScvPgo8cGF0aCBkPSJNMCA0MEw0MCAwIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiIHN0cm9rZS13aWR0aD0iMScvPgo8L3N2Zz4=')] opacity-20" />
         
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/80 to-background" />
 
-        {/* Floating Glowing Orbs - Hidden on mobile for performance */}
+        {/* Floating Glowing Orbs */}
         <motion.div 
           animate={{ x: [-50, 50, -50], y: [-50, 50, -50], scale: [1, 1.2, 1] }}
           transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
@@ -95,7 +124,7 @@ export default function Home() {
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.8 }}
-            className="text-5xl sm:text-7xl md:text-8xl font-black text-on-surface mb-8 tracking-tighter leading-[1.05]"
+            className="text-4xl sm:text-7xl md:text-8xl font-black text-on-surface mb-8 tracking-tighter leading-[1.05]"
           >
             {t('hero_title')} <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-br from-primary via-tertiary to-primary animate-gradient-x">
@@ -107,7 +136,7 @@ export default function Home() {
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="text-xl sm:text-2xl text-on-surface-variant max-w-3xl leading-relaxed mb-12 font-medium"
+            className="text-lg sm:text-xl text-on-surface-variant max-w-3xl leading-relaxed mb-12 font-medium"
           >
             {t('hero_desc')}
           </motion.p>
@@ -134,18 +163,41 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Mods Grid */}
-      <section id="mods" className="scroll-mt-32 relative">
-        <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-4">
+      {/* Mods Section with Search & Categories */}
+      <section id="mods" className="scroll-mt-32 relative px-2">
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between mb-12 gap-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-primary/10 rounded-2xl border border-primary/20">
               <Zap size={32} className="text-primary" />
             </div>
             <h2 className="text-3xl sm:text-4xl font-black text-on-surface tracking-tight">{t('mods_available')}</h2>
           </div>
-          <div className="px-5 py-2.5 bg-surface-variant/30 rounded-full text-sm font-bold text-on-surface-variant border border-outline-variant/30 backdrop-blur-sm">
-            {mods.length} {t('mods_found')}
+          
+          {/* Instant Search Bar */}
+          <div className="relative w-full xl:max-w-md">
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search mods by name, description, tags..." 
+              className="w-full bg-surface-variant/30 border border-outline-variant/40 rounded-full pl-12 pr-4 py-3.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-outline text-on-surface text-base"
+            />
+            <Search size={20} className="absolute left-4 top-4.5 text-outline" />
           </div>
+        </div>
+
+        {/* Category Filtering Tabs */}
+        <div className="flex flex-wrap items-center gap-2 mb-10 pb-4 border-b border-outline-variant/20">
+          <SlidersHorizontal size={18} className="text-outline mr-2 hidden sm:block" />
+          {categories.map(category => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all ${selectedCategory === category ? 'bg-primary text-on-primary shadow-md shadow-primary/20' : 'bg-surface-variant/20 hover:bg-surface-variant/40 text-on-surface-variant border border-outline-variant/30'}`}
+            >
+              {category}
+            </button>
+          ))}
         </div>
 
         {loading ? (
@@ -154,17 +206,18 @@ export default function Home() {
               <div key={i} className="animate-pulse bg-surface-variant/20 h-[420px] rounded-[32px] border border-outline-variant/30"></div>
             ))}
           </div>
-        ) : mods.length === 0 ? (
+        ) : filteredMods.length === 0 ? (
           <motion.div 
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             className="text-center py-32 bg-surface-variant/10 rounded-[40px] border border-outline-variant/30 backdrop-blur-xl shadow-2xl"
           >
             <Layers size={64} className="mx-auto text-outline mb-6 opacity-40" />
-            <h3 className="text-2xl font-black text-on-surface mb-2 tracking-tight">{t('no_mods')}</h3>
-            <p className="text-on-surface-variant text-lg">Be the first to request a mod!</p>
+            <h3 className="text-2xl font-black text-on-surface mb-2 tracking-tight">No Mods Found</h3>
+            <p className="text-on-surface-variant text-lg">Try adjusting your search query or category filters.</p>
           </motion.div>
         ) : (
           <motion.div 
+            layout
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
             initial="hidden"
             animate="show"
@@ -172,13 +225,17 @@ export default function Home() {
               hidden: { opacity: 0 },
               show: {
                 opacity: 1,
-                transition: { staggerChildren: 0.1 }
+                transition: { staggerChildren: 0.05 }
               }
             }}
           >
-            {mods.map((mod) => (
-              <ModCard key={mod.id} mod={mod} onOpenModal={setSelectedMod} />
-            ))}
+            <AnimatePresence>
+              {filteredMods.map((mod) => (
+                <motion.div key={mod.id} layout>
+                  <ModCard mod={mod} onOpenModal={setSelectedMod} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </motion.div>
         )}
       </section>

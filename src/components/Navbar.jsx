@@ -14,6 +14,9 @@ export default function Navbar() {
   const { t, i18n } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const isDev = currentUser?.email === 'deltaastra24@gmail.com';
+  const isAdmin = isDev || userData?.role === 'admin' || userData?.role === 'dev';
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -31,14 +34,14 @@ export default function Navbar() {
   };
 
   const getStatusBadge = () => {
-    if (!userData) return null;
-    if (userData.role === 'dev') {
+    if (isDev) {
       return (
         <span className="bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
           <ShieldAlert size={14} /> {t('status_dev')}
         </span>
       );
     }
+    if (!userData) return null;
     if (userData.role === 'admin') {
       return (
         <span className="bg-tertiary/20 text-tertiary border border-tertiary/30 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
@@ -61,7 +64,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-background/60 backdrop-blur-xl border-b border-outline-variant/30">
+    <nav className="sticky top-0 z-[90] bg-background/60 backdrop-blur-xl border-b border-outline-variant/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo & Desktop Nav */}
@@ -93,7 +96,7 @@ export default function Navbar() {
                   <span className="text-xs text-on-surface-variant font-mono bg-surface-variant/20 px-3 py-1.5 rounded-full border border-outline-variant/20">{currentUser.email}</span>
                 </div>
                 
-                {(userData?.role === 'admin' || userData?.role === 'dev') && (
+                {isAdmin && (
                   <Link 
                     to="/admin" 
                     className="text-sm font-black text-on-primary bg-primary hover:bg-primary-container hover:text-on-primary-container transition-all px-5 py-2.5 rounded-full shadow-[0_0_20px_rgba(168,199,250,0.2)] hover:shadow-[0_0_30px_rgba(168,199,250,0.4)]"
@@ -150,7 +153,7 @@ export default function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-outline-variant/20 bg-background/95 backdrop-blur-2xl overflow-hidden"
+            className="md:hidden border-t border-outline-variant/20 bg-background/95 backdrop-blur-2xl overflow-hidden absolute top-20 left-0 right-0 z-[100] shadow-2xl"
           >
             <div className="px-4 pt-4 pb-6 space-y-4">
               <Link
@@ -177,7 +180,7 @@ export default function Navbar() {
                     <div className="w-fit">{getStatusBadge()}</div>
                   </div>
 
-                  {(userData?.role === 'admin' || userData?.role === 'dev') && (
+                  {isAdmin && (
                     <Link
                       to="/admin"
                       onClick={() => setMobileMenuOpen(false)}

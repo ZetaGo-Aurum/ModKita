@@ -1,34 +1,36 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, query, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, addDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { uploadFileToB2, deleteFileFromB2 } from '../lib/b2Storage';
 import toast from 'react-hot-toast';
-import { Upload, Trash2, CheckCircle, XCircle, Users, Box, PlusCircle, Shield, Inbox } from 'lucide-react';
+import { Upload, Trash2, CheckCircle, XCircle, Users, Box, PlusCircle, Shield, Inbox, Link as LinkIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdminDashboard() {
-  const { userData } = useAuth();
-  const isDev = userData?.role === 'dev';
+  const { currentUser, userData } = useAuth();
+  const isDev = currentUser?.email === 'deltaastra24@gmail.com';
   const [activeTab, setActiveTab] = useState('mods'); // 'mods', 'users', 'requests', 'admins'
   
   const [users, setUsers] = useState([]);
   const [mods, setMods] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [whitelistedAdmins, setWhitelistedAdmins] = useState([]);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
   const [loading, setLoading] = useState(true);
   
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [formData, setFormData] = useState({
-    title: '', slug: '', version: '', description: '', category: '', tags: '', changelog: '', accessType: 'restricted', videoUrl: ''
+    title: '', slug: '', version: '', description: '', category: '', tags: '', changelog: '', accessType: 'restricted', videoUrl: '', externalDownloadUrl: ''
   });
   const [coverFile, setCoverFile] = useState(null);
   const [modFile, setModFile] = useState(null);
   const coverInputRef = useRef();
   const modInputRef = useRef();
 
-  // Fetch Users, Mods, Requests
+  // Fetch Users, Mods, Requests, Whitelisted Admins
   useEffect(() => {
     const unsubUsers = onSnapshot(query(collection(db, 'users')), (snapshot) => {
       const data = [];
@@ -48,8 +50,14 @@ export default function AdminDashboard() {
       setRequests(data);
     });
 
+    const unsubWhitelist = onSnapshot(query(collection(db, 'admin_whitelist')), (snapshot) => {
+      const data = [];
+      snapshot.forEach(d => data.push({ id: d.id, ...d.data() }));
+      setWhitelistedAdmins(data);
+    });
+
     setLoading(false);
-    return () => { unsubUsers(); unsubMods(); unsubReqs(); };
+    return () => { unsubUsers(); unsubMods(); unsubReqs(); unsubWhitelist(); };
   }, []);
 
   const handleTitleChange = (val) => {
@@ -66,15 +74,34 @@ export default function AdminDashboard() {
     } catch (error) { toast.error('Failed to update status'); }
   };
 
-  const handleAdminToggle = async (userId, currentRole) => {
+  const handleAddWhitelistAdmin = async (e) => {
+    e.preventDefault();
     if (!isDev) return;
+    if (!newAdminEmail) return;
+
     try {
-      await updateDoc(doc(db, 'users', userId), {
-        role: currentRole === 'admin' ? 'member' : 'admin',
-        status: 'approved' // admins must be approved
+      const emailLower = newAdminEmail.toLowerCase().trim();
+      await setDoc(doc(db, 'admin_whitelist', emailLower), {
+        email: emailLower,
+        addedAt: new Date().toISOString()
       });
-      toast.success(`Admin role updated`);
-    } catch (error) { toast.error('Failed to update role'); }
+      toast.success(`Email ${emailLower} whitelisted as Admin`);
+      setNewAdminEmail('');
+    } catch (error) {
+      toast.error('Failed to add admin to whitelist');
+    }
+  };
+
+  const handleRemoveWhitelistAdmin = async (email) => {
+    if (!isDev) return;
+    if (!window.confirm(`Remove admin privileges for ${email}?`)) return;
+
+    try {
+      await deleteDoc(doc(db, 'admin_whitelist', email.toLowerCase()));
+      toast.success(`Removed admin privileges`);
+    } catch (error) {
+      toast.error('Failed to remove admin');
+    }
   };
 
   const handleDeleteMod = async (mod) => {
@@ -82,8 +109,10 @@ export default function AdminDashboard() {
     try {
       // Delete cover from Firebase Storage
       try { await deleteObject(ref(storage, mod.coverStoragePath)); } catch(e){}
-      // Delete mod from B2
-      try { await deleteFileFromB2(mod.fileStorageName); } catch(e){}
+      // Delete mod from B2 (if uploaded to B2)
+      if (mod.fileStorageName) {
+        try { await deleteFileFromB2(mod.fileStorageName); } catch(e){}
+      }
       
       await deleteDoc(doc(db, 'mods', mod.id));
       toast.success('Mod deleted');
@@ -92,12 +121,11 @@ export default function AdminDashboard() {
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
-    if (!coverFile || !modFile) return toast.error('Cover image and mod file required.');
+    if (!coverFile) return toast.error('Cover image is required.');
     
-    // Check if B2 Key is set
-    if (import.meta.env.VITE_B2_APPLICATION_KEY === "isi_dengan_secret_application_key_anda" || !import.meta.env.VITE_B2_APPLICATION_KEY) {
-      toast.error('B2 Application Key not set in .env! Cannot upload mod to B2.');
-      return;
+    // Check if either B2 file OR external URL is provided
+    if (!modFile && !formData.externalDownloadUrl) {
+      return toast.error('Please upload a mod file or provide an external download link (Google Drive, Mega, etc.).');
     }
 
     setIsUploading(true);
@@ -113,12 +141,25 @@ export default function AdminDashboard() {
       });
       const coverUrl = await getDownloadURL(coverRef);
 
-      // Upload Mod to B2
-      const b2FileName = `${timestamp}_${modFile.name}`;
-      setUploadProgress(10); // Indicate start of B2
-      
-      const fileUrl = await uploadFileToB2(modFile, b2FileName);
-      setUploadProgress(90);
+      // Handle Mod File Upload (Backblaze B2) if provided
+      let fileUrl = formData.externalDownloadUrl || '';
+      let b2FileName = '';
+      let fileSize = 0;
+
+      if (modFile) {
+        // Check if B2 Key is set
+        if (import.meta.env.VITE_B2_APPLICATION_KEY === "isi_dengan_secret_application_key_anda" || !import.meta.env.VITE_B2_APPLICATION_KEY) {
+          toast.error('B2 Application Key not set in .env! Cannot upload mod to B2. Try using an external link instead.');
+          setIsUploading(false);
+          return;
+        }
+
+        b2FileName = `${timestamp}_${modFile.name}`;
+        setUploadProgress(10);
+        fileUrl = await uploadFileToB2(modFile, b2FileName);
+        setUploadProgress(90);
+        fileSize = modFile.size;
+      }
 
       // Parse tags
       const tagsArray = formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
@@ -126,12 +167,17 @@ export default function AdminDashboard() {
       await addDoc(collection(db, 'mods'), {
         ...formData,
         tags: tagsArray,
-        coverUrl, fileUrl, coverStoragePath, fileStorageName: b2FileName,
-        fileSize: modFile.size, downloads: 0, createdAt: new Date().toISOString()
+        coverUrl,
+        fileUrl,
+        coverStoragePath,
+        fileStorageName: b2FileName,
+        fileSize,
+        downloads: 0,
+        createdAt: new Date().toISOString()
       });
 
       toast.success('Upload complete!');
-      setFormData({ title: '', slug: '', version: '', description: '', category: '', tags: '', changelog: '', accessType: 'restricted', videoUrl: '' });
+      setFormData({ title: '', slug: '', version: '', description: '', category: '', tags: '', changelog: '', accessType: 'restricted', videoUrl: '', externalDownloadUrl: '' });
       setCoverFile(null); setModFile(null);
       if (coverInputRef.current) coverInputRef.current.value = '';
       if (modInputRef.current) modInputRef.current.value = '';
@@ -209,6 +255,14 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
+                  <label className="block text-sm text-on-surface-variant mb-1">External Download Link (Alternative Storage, e.g. GDrive, Mega)</label>
+                  <div className="relative">
+                    <input value={formData.externalDownloadUrl} onChange={e => setFormData({...formData, externalDownloadUrl: e.target.value})} className="w-full bg-surface-variant/50 border border-outline rounded-xl pl-10 pr-4 py-2.5 focus:border-primary outline-none" placeholder="e.g. https://drive.google.com/... (Saves B2 Storage)" />
+                    <LinkIcon size={18} className="absolute left-3.5 top-3.5 text-outline" />
+                  </div>
+                </div>
+
+                <div>
                   <label className="block text-sm text-on-surface-variant mb-1">Tags (Comma-separated)</label>
                   <input value={formData.tags} onChange={e => setFormData({...formData, tags: e.target.value})} className="w-full bg-surface-variant/50 border border-outline rounded-xl px-4 py-2.5 focus:border-primary outline-none" placeholder="e.g. gta, graphics, hd" />
                 </div>
@@ -229,8 +283,8 @@ export default function AdminDashboard() {
                     <input ref={coverInputRef} required type="file" accept="image/*" onChange={e => setCoverFile(e.target.files[0])} className="w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-primary-container file:text-on-primary-container" />
                   </div>
                   <div>
-                    <label className="block text-sm text-on-surface-variant mb-1">Mod Archive (Backblaze B2)</label>
-                    <input ref={modInputRef} required type="file" accept=".zip,.rar,.7z" onChange={e => setModFile(e.target.files[0])} className="w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-secondary-container file:text-on-secondary-container" />
+                    <label className="block text-sm text-on-surface-variant mb-1">Mod Archive (Backblaze B2 - Optional if Link is set)</label>
+                    <input ref={modInputRef} type="file" accept=".zip,.rar,.7z,.apk" onChange={e => setModFile(e.target.files[0])} className="w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-secondary-container file:text-on-secondary-container" />
                   </div>
                 </div>
                 {isUploading && <div className="w-full bg-surface-variant rounded-full h-2 mt-2"><div className="bg-primary h-2 rounded-full" style={{ width: `${uploadProgress}%` }}></div></div>}
@@ -314,24 +368,46 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'admins' && isDev && (
-          <motion.div key="admins" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="bg-surface border border-outline-variant/30 p-6 rounded-[32px]">
-            <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Shield className="text-tertiary"/> Admin Management (Dev Only)</h2>
-            <table className="w-full text-left">
-              <thead className="border-b border-outline-variant/50 text-sm text-outline"><tr><th className="pb-3 pl-4">Email</th><th className="pb-3">Role</th><th className="pb-3 text-right pr-4">Action</th></tr></thead>
-              <tbody className="text-sm">
-                {users.filter(u => u.role !== 'dev').map(user => (
-                  <tr key={user.id} className="border-b border-outline-variant/20">
-                    <td className="py-4 pl-4">{user.email}</td>
-                    <td className="py-4"><span className={`px-2 py-1 rounded-full text-xs font-bold ${user.role === 'admin' ? 'bg-tertiary/20 text-tertiary' : 'bg-surface-variant text-on-surface-variant'}`}>{user.role}</span></td>
-                    <td className="py-4 text-right pr-4">
-                      <button onClick={() => handleAdminToggle(user.id, user.role)} className="bg-outline/20 text-on-surface px-4 py-1.5 rounded-full text-xs font-bold hover:bg-outline/40">
-                        {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <motion.div key="admins" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+            {/* Add Whitelist Admin */}
+            <div className="bg-surface border border-outline-variant/30 p-6 rounded-[32px] shadow-sm">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-tertiary"><Shield size={20}/> Whitelist New Admin</h2>
+              <form onSubmit={handleAddWhitelistAdmin} className="flex gap-3 max-w-lg">
+                <input 
+                  type="email" 
+                  required 
+                  value={newAdminEmail} 
+                  onChange={e => setNewAdminEmail(e.target.value)} 
+                  placeholder="e.g. administrator@gmail.com" 
+                  className="grow bg-surface-variant/50 border border-outline rounded-xl px-4 py-2.5 focus:border-primary outline-none"
+                />
+                <button type="submit" className="bg-tertiary text-on-tertiary font-bold px-6 py-2.5 rounded-xl hover:bg-tertiary/80 transition-all flex items-center gap-2"><PlusCircle size={18}/> Whitelist</button>
+              </form>
+            </div>
+
+            {/* List Whitelisted Admins */}
+            <div className="bg-surface border border-outline-variant/30 p-6 rounded-[32px]">
+              <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Shield className="text-tertiary"/> Whitelisted Admins (Dev Only)</h2>
+              <table className="w-full text-left">
+                <thead className="border-b border-outline-variant/50 text-sm text-outline"><tr><th className="pb-3 pl-4">Admin Email</th><th className="pb-3">Added Date</th><th className="pb-3 text-right pr-4">Action</th></tr></thead>
+                <tbody className="text-sm">
+                  {whitelistedAdmins.map(admin => (
+                    <tr key={admin.id} className="border-b border-outline-variant/20 hover:bg-surface-variant/10">
+                      <td className="py-4 pl-4 font-mono font-bold">{admin.email}</td>
+                      <td className="py-4 text-outline text-xs">{admin.addedAt ? new Date(admin.addedAt).toLocaleDateString() : 'Unknown'}</td>
+                      <td className="py-4 text-right pr-4">
+                        <button onClick={() => handleRemoveWhitelistAdmin(admin.email)} className="bg-error/10 text-error px-4 py-1.5 rounded-full text-xs font-bold hover:bg-error/20 transition-all flex items-center gap-1.5 ml-auto">
+                          <Trash2 size={12}/> Remove Whitelist
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {whitelistedAdmins.length === 0 && (
+                    <tr><td colSpan={3} className="py-6 pl-4 text-on-surface-variant">No whitelisted admins yet. Default Dev isdeltaastra24@gmail.com</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

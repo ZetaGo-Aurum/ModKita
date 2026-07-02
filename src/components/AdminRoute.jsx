@@ -6,7 +6,10 @@ const AdminRoute = ({ children }) => {
 
   if (loading) return null;
 
-  if (!currentUser || (userData?.role !== 'admin' && userData?.role !== 'dev')) {
+  const isDev = currentUser?.email === 'deltaastra24@gmail.com';
+  const isAdmin = isDev || userData?.role === 'admin' || userData?.role === 'dev';
+
+  if (!currentUser || !isAdmin) {
     return <Navigate to="/" replace />;
   }
 

@@ -13,6 +13,17 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [userDataLoading, setUserDataLoading] = useState(true);
 
+  // Helper to check if email is whitelisted as admin
+  const checkAdminWhitelist = async (email) => {
+    try {
+      const whitelistDoc = await getDoc(doc(db, 'admin_whitelist', email.toLowerCase()));
+      return whitelistDoc.exists();
+    } catch (e) {
+      console.error("Whitelist check failed:", e);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const handleRedirectResult = async () => {
       try {
@@ -21,22 +32,17 @@ export const AuthProvider = ({ children }) => {
           const user = result.user;
           const userRef = doc(db, 'users', user.uid);
           const userSnap = await getDoc(userRef);
+          
+          const isWhitelisted = await checkAdminWhitelist(user.email);
+          const isDev = user.email === 'deltaastra24@gmail.com';
+
           if (!userSnap.exists()) {
-            if (user.email === 'deltaastra24@gmail.com') {
-              await setDoc(userRef, {
-                email: user.email,
-                role: 'dev',
-                status: 'approved',
-                createdAt: new Date().toISOString()
-              });
-            } else {
-              await setDoc(userRef, {
-                email: user.email || user.providerData[0]?.email || 'social-user',
-                role: 'member',
-                status: 'pending',
-                createdAt: new Date().toISOString()
-              });
-            }
+            await setDoc(userRef, {
+              email: user.email,
+              role: isDev ? 'dev' : (isWhitelisted ? 'admin' : 'member'),
+              status: (isDev || isWhitelisted) ? 'approved' : 'pending',
+              createdAt: new Date().toISOString()
+            });
           }
         }
       } catch (error) {
@@ -48,50 +54,65 @@ export const AuthProvider = ({ children }) => {
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
-      setLoading(false); // Instantly resolve auth loading to make site feel fast
+      setLoading(false); // Instantly resolve main auth loading
 
       if (user) {
         setUserDataLoading(true);
         let resolved = false;
 
-        // Set a 2.5 second timeout to prevent Firestore hanging on slow/blocked connections (e.g. Telkomsel blocks)
-        const timeout = setTimeout(() => {
+        // 2.5 second timeout to prevent page loading hanging on slow network
+        const timeout = setTimeout(async () => {
           if (!resolved) {
-            console.warn("Firestore fetch timed out. Falling back to local role verification.");
-            if (user.email === 'deltaastra24@gmail.com') {
-              setUserData({ role: 'dev', status: 'approved' });
-            } else {
-              setUserData({ role: 'member', status: 'pending' });
-            }
+            console.warn("Firestore fetch timed out. Falling back to local/static verification.");
+            const isDev = user.email === 'deltaastra24@gmail.com';
+            setUserData({ 
+              role: isDev ? 'dev' : 'member', 
+              status: isDev ? 'approved' : 'pending' 
+            });
             setUserDataLoading(false);
           }
         }, 2500);
 
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userRef);
           resolved = true;
           clearTimeout(timeout);
 
+          const isDev = user.email === 'deltaastra24@gmail.com';
+          const isWhitelisted = await checkAdminWhitelist(user.email);
+
           if (userDoc.exists()) {
-            setUserData(userDoc.data());
-          } else {
-            if (user.email === 'deltaastra24@gmail.com') {
-              setUserData({ role: 'dev', status: 'approved' });
-            } else {
-              setUserData({ role: 'member', status: 'pending' });
+            const data = userDoc.data();
+            // Sync role dynamically if whitelisted state changes
+            if (!isDev && isWhitelisted && data.role !== 'admin') {
+              data.role = 'admin';
+              data.status = 'approved';
+              await setDoc(userRef, data, { merge: true });
             }
+            setUserData(data);
+          } else {
+            // Create user document if it does not exist
+            const newData = {
+              email: user.email,
+              role: isDev ? 'dev' : (isWhitelisted ? 'admin' : 'member'),
+              status: (isDev || isWhitelisted) ? 'approved' : 'pending',
+              createdAt: new Date().toISOString()
+            };
+            await setDoc(userRef, newData);
+            setUserData(newData);
           }
         } catch (error) {
           resolved = true;
           clearTimeout(timeout);
           console.error("Error fetching user data:", error);
           
-          // Graceful fallback: Offline/Error shouldn't block the user
-          if (user.email === 'deltaastra24@gmail.com') {
-            setUserData({ role: 'dev', status: 'approved' });
-          } else {
-            setUserData({ role: 'member', status: 'pending' });
-          }
+          // Graceful static fallback
+          const isDev = user.email === 'deltaastra24@gmail.com';
+          setUserData({ 
+            role: isDev ? 'dev' : 'member', 
+            status: isDev ? 'approved' : 'pending' 
+          });
         } finally {
           setUserDataLoading(false);
         }
@@ -107,7 +128,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     currentUser,
     userData,
-    loading: loading || userDataLoading // Combined loading state
+    loading: loading || userDataLoading
   };
 
   return (
