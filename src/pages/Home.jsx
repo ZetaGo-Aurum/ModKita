@@ -69,16 +69,16 @@ export default function Home() {
         
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/80 to-background" />
 
-        {/* Floating Glowing Orbs */}
+        {/* Floating Glowing Orbs - Hidden on mobile for performance */}
         <motion.div 
           animate={{ x: [-50, 50, -50], y: [-50, 50, -50], scale: [1, 1.2, 1] }}
           transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-0 left-[20%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] mix-blend-screen pointer-events-none"
+          className="hidden md:block absolute top-0 left-[20%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] mix-blend-screen pointer-events-none"
         />
         <motion.div 
           animate={{ x: [50, -50, 50], y: [50, -50, 50], scale: [1, 1.3, 1] }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-0 right-[20%] w-[600px] h-[600px] bg-tertiary/20 rounded-full blur-[150px] mix-blend-screen pointer-events-none"
+          className="hidden md:block absolute bottom-0 right-[20%] w-[600px] h-[600px] bg-tertiary/20 rounded-full blur-[150px] mix-blend-screen pointer-events-none"
         />
 
         <div className="relative z-10 max-w-4xl mx-auto text-center flex flex-col items-center">

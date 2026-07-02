@@ -37,10 +37,19 @@
 
   body {
     @apply bg-[rgb(var(--background))] text-[rgb(var(--on-background))] font-sans antialiased overflow-x-hidden selection:bg-primary/30 selection:text-primary;
+  }
+
+  /* Fixed background using performant layer to prevent scroll repaints and jank on mobile */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -10;
     background-image: 
       radial-gradient(circle at 15% 50%, rgba(168, 199, 250, 0.03) 0%, transparent 50%),
       radial-gradient(circle at 85% 30%, rgba(196, 198, 235, 0.03) 0%, transparent 50%);
-    background-attachment: fixed;
+    pointer-events: none;
+    transform: translate3d(0, 0, 0); /* Force GPU acceleration */
   }
 }
 
@@ -71,7 +80,7 @@
     transition: 0s;
   }
 
-  /* Futuristic Webkit Scrollbar */
+  /* Webkit Scrollbar */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
