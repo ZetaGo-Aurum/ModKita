@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, githubProvider, db } from '../firebase/config';
-import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -70,7 +70,12 @@ export default function Register() {
       }
       navigate('/');
     } catch (error) {
-      toast.error(error.message || 'GitHub Sign-In failed.');
+      if (error.code === 'auth/popup-blocked') {
+        toast.loading('Popup blocked by browser. Redirecting to GitHub...', { duration: 3000 });
+        await signInWithRedirect(auth, githubProvider);
+      } else {
+        toast.error(error.message || 'GitHub Sign-In failed.');
+      }
     } finally {
       setLoading(false);
     }

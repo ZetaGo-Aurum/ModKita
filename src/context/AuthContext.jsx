@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase/config';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged, getRedirectResult } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -13,6 +13,38 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          const user = result.user;
+          const userRef = doc(db, 'users', user.uid);
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            if (user.email === 'deltaastra24@gmail.com') {
+              await setDoc(userRef, {
+                email: user.email,
+                role: 'dev',
+                status: 'approved',
+                createdAt: new Date().toISOString()
+              });
+            } else {
+              await setDoc(userRef, {
+                email: user.email || user.providerData[0]?.email || 'social-user',
+                role: 'member',
+                status: 'pending',
+                createdAt: new Date().toISOString()
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Redirect Auth Error:", error);
+      }
+    };
+
+    handleRedirectResult();
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
