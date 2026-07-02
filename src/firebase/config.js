@@ -2,10 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCnYzWpxFTBcpXTDE9D31HhBILPV0ZhYs4",
   authDomain: "mods-7c70d.firebaseapp.com",
+  databaseURL: "https://mods-7c70d-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "mods-7c70d",
   storageBucket: "mods-7c70d.firebasestorage.app",
   messagingSenderId: "884157337235",
@@ -17,4 +19,5 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const rtdb = getDatabase(app);
 export const googleProvider = new GoogleAuthProvider();

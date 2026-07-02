@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAdmin() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isApprovedMember() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    match /users/{userId} {
+      // Users can read their own data, admins can read all
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Only admins can write to users (except during initial signup)
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if isAdmin();
+    }
+
+    match /mods/{modId} {
+      // Admins and approved members can read mods
+      allow read: if isAdmin() || isApprovedMember();
+      // Only admins can create/update/delete mods
+      allow write: if isAdmin();
+    }
+  }
+}
