@@ -156,53 +156,14 @@ export default function Uptime() {
     );
   };
 
-  const StatusCard = ({ title, desc, state, latency, icon: Icon, delay, keyName }) => (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95, y: 30 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.6, delay, type: "spring", bounce: 0.4 }}
-      className="relative group bg-surface/30 backdrop-blur-xl border border-outline-variant/30 p-6 rounded-[32px] overflow-hidden hover:border-primary/50 transition-colors shadow-lg"
-    >
-      <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500 ${state === 'online' ? 'from-primary to-transparent' : 'from-error to-transparent'}`} />
-      
-      <div className="relative z-10 flex flex-col justify-between h-full">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div className={`p-3.5 rounded-2xl backdrop-blur-md border ${state === 'online' ? 'bg-primary/10 text-primary border-primary/20' : state === 'loading' ? 'bg-outline/10 text-outline border-outline/20' : 'bg-error/10 text-error border-error/20'}`}>
-              <Icon size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-on-surface tracking-tight">{title}</h3>
-              <p className="text-on-surface-variant text-xs mt-0.5">{desc}</p>
-            </div>
-          </div>
-          
-          <div className="flex flex-col items-end">
-            {state === 'online' ? (
-              <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> 99.9%
-              </span>
-            ) : (
-              <span className="text-[10px] font-mono bg-error/10 text-error border border-error/20 px-2 py-0.5 rounded-md">
-                0.0%
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Latency line & SVG Chart */}
-        <div className="border-t border-outline-variant/10 pt-3">
-          <div className="flex justify-between items-center text-xs font-mono">
-            <span className="text-outline">{t('uptime_latency_trend')}</span>
-            <span className={state === 'online' ? "text-primary font-bold" : "text-outline"}>
-              {state === 'online' ? `${latency}ms` : '---'}
-            </span>
-          </div>
-          {state === 'online' && renderSVGChart(history[keyName])}
-        </div>
-      </div>
-    </motion.div>
-  );
+  const services = [
+    { title: "Vercel Edge CDN", desc: "Global Content Delivery Network", keyName: "cdn", icon: Globe },
+    { title: "Firestore DB", desc: "NoSQL Document Database Cluster", keyName: "firestore", icon: Database },
+    { title: "Realtime DB", desc: "Low-latency Synchronized State", keyName: "rtdb", icon: Activity },
+    { title: "Backblaze B2", desc: "Object Storage Main Cluster", keyName: "b2", icon: Server },
+    { title: "Cloudinary CDN", desc: "High-speed Media Delivery System", keyName: "cloudinary", icon: Cloud },
+    { title: "Auth Services", desc: "Identity & Token Verification", keyName: "auth", icon: Shield }
+  ];
 
   return (
     <motion.div 
@@ -241,20 +202,69 @@ export default function Uptime() {
         </p>
       </div>
 
+      {/* Grid of Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
-        <StatusCard title="Vercel Edge CDN" desc="Global Content Delivery Network" state={status.cdn} latency={ping.cdn} icon={Globe} delay={0.1} keyName="cdn" />
-        <StatusCard title="Firestore DB" desc="NoSQL Document Database Cluster" state={status.firestore} latency={ping.firestore} icon={Database} delay={0.2} keyName="firestore" />
-        <StatusCard title="Realtime DB" desc="Low-latency Synchronized State" state={status.rtdb} latency={ping.rtdb} icon={Activity} delay={0.3} keyName="rtdb" />
-        <StatusCard title="Backblaze B2" desc="Object Storage Main Cluster" state={status.b2} latency={ping.b2} icon={Server} delay={0.4} keyName="b2" />
-        <StatusCard title="Cloudinary CDN" desc="High-speed Media Delivery System" state={status.cloudinary} latency={ping.cloudinary} icon={Cloud} delay={0.5} keyName="cloudinary" />
-        <StatusCard title="Auth Services" desc="Identity & Token Verification" state={status.auth} latency={ping.auth} icon={Shield} delay={0.6} keyName="auth" />
+        {services.map((service, idx) => {
+          const state = status[service.keyName];
+          const latency = ping[service.keyName];
+          const Icon = service.icon;
+          
+          return (
+            <motion.div 
+              key={service.keyName}
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: idx * 0.05, type: "spring", bounce: 0.4 }}
+              className="relative group bg-surface/30 backdrop-blur-xl border border-outline-variant/30 p-6 rounded-[32px] overflow-hidden hover:border-primary/50 transition-colors shadow-lg"
+            >
+              <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500 ${state === 'online' ? 'from-primary to-transparent' : 'from-error to-transparent'}`} />
+              
+              <div className="relative z-10 flex flex-col justify-between h-full">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3.5 rounded-2xl backdrop-blur-md border ${state === 'online' ? 'bg-primary/10 text-primary border-primary/20' : state === 'loading' ? 'bg-outline/10 text-outline border-outline/20' : 'bg-error/10 text-error border-error/20'}`}>
+                      <Icon size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-on-surface tracking-tight">{service.title}</h3>
+                      <p className="text-on-surface-variant text-xs mt-0.5">{service.desc}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-end">
+                    {state === 'online' ? (
+                      <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> 99.9%
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono bg-error/10 text-error border border-error/20 px-2 py-0.5 rounded-md">
+                        0.0%
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Latency line & SVG Chart */}
+                <div className="border-t border-outline-variant/10 pt-3">
+                  <div className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-outline">{t('uptime_latency_trend')}</span>
+                    <span className={state === 'online' ? "text-primary font-bold" : "text-outline"}>
+                      {state === 'online' ? `${latency}ms` : '---'}
+                    </span>
+                  </div>
+                  {state === 'online' && renderSVGChart(history[service.keyName])}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Futuristic Scrolling Terminal Log console */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.7 }}
+        transition={{ delay: 0.5 }}
         className="bg-black/85 rounded-3xl border border-outline-variant/30 overflow-hidden shadow-2xl font-mono text-sm max-w-4xl mx-auto"
       >
         <div className="bg-surface border-b border-outline-variant/20 px-5 py-3.5 flex items-center justify-between">
