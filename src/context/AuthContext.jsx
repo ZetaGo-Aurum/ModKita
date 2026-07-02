@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [userDataLoading, setUserDataLoading] = useState(true);
 
   useEffect(() => {
     const handleRedirectResult = async () => {
@@ -47,14 +48,33 @@ export const AuthProvider = ({ children }) => {
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      setLoading(false); // Instantly resolve auth loading to make site feel fast
+
       if (user) {
-        // Fetch user data from firestore
+        setUserDataLoading(true);
+        let resolved = false;
+
+        // Set a 2.5 second timeout to prevent Firestore hanging on slow/blocked connections (e.g. Telkomsel blocks)
+        const timeout = setTimeout(() => {
+          if (!resolved) {
+            console.warn("Firestore fetch timed out. Falling back to local role verification.");
+            if (user.email === 'deltaastra24@gmail.com') {
+              setUserData({ role: 'dev', status: 'approved' });
+            } else {
+              setUserData({ role: 'member', status: 'pending' });
+            }
+            setUserDataLoading(false);
+          }
+        }, 2500);
+
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
+          resolved = true;
+          clearTimeout(timeout);
+
           if (userDoc.exists()) {
             setUserData(userDoc.data());
           } else {
-            // Check if predefined Dev admin
             if (user.email === 'deltaastra24@gmail.com') {
               setUserData({ role: 'dev', status: 'approved' });
             } else {
@@ -62,13 +82,23 @@ export const AuthProvider = ({ children }) => {
             }
           }
         } catch (error) {
+          resolved = true;
+          clearTimeout(timeout);
           console.error("Error fetching user data:", error);
-          setUserData(null);
+          
+          // Graceful fallback: Offline/Error shouldn't block the user
+          if (user.email === 'deltaastra24@gmail.com') {
+            setUserData({ role: 'dev', status: 'approved' });
+          } else {
+            setUserData({ role: 'member', status: 'pending' });
+          }
+        } finally {
+          setUserDataLoading(false);
         }
       } else {
         setUserData(null);
+        setUserDataLoading(false);
       }
-      setLoading(false);
     });
 
     return unsubscribe;
@@ -77,7 +107,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     currentUser,
     userData,
-    loading
+    loading: loading || userDataLoading // Combined loading state
   };
 
   return (
