@@ -49,9 +49,9 @@ export default function Register() {
   };
 
   const handleGithubLogin = async () => {
-    setLoading(true);
     try {
       const result = await signInWithPopup(auth, githubProvider);
+      setLoading(true);
       const user = result.user;
       
       const userRef = doc(db, 'users', user.uid);

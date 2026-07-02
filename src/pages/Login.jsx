@@ -34,9 +34,9 @@ export default function Login() {
   };
 
   const handleGithubLogin = async () => {
-    setLoading(true);
     try {
       const result = await signInWithPopup(auth, githubProvider);
+      setLoading(true);
       const user = result.user;
       
       const userRef = doc(db, 'users', user.uid);
@@ -62,9 +62,9 @@ export default function Login() {
   };
 
   const handleAdminGoogleLogin = async () => {
-    setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      setLoading(true);
       const user = result.user;
       
       const userRef = doc(db, 'users', user.uid);
