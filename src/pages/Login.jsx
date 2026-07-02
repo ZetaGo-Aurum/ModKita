@@ -26,6 +26,11 @@ export default function Login() {
     }
   }, [currentUser, userData, navigate]);
 
+  const isMobileOrFirefox = () => {
+    const ua = navigator.userAgent.toLowerCase();
+    return /iphone|ipad|ipod|android|firefox/.test(ua);
+  };
+
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     if (!email.endsWith('.mod')) {
@@ -46,9 +51,15 @@ export default function Login() {
   };
 
   const handleGithubLogin = async () => {
+    setLoading(true);
     try {
+      if (isMobileOrFirefox()) {
+        toast.loading('Redirecting to GitHub...', { duration: 2000 });
+        await signInWithRedirect(auth, githubProvider);
+        return;
+      }
+
       const result = await signInWithPopup(auth, githubProvider);
-      setLoading(true);
       const user = result.user;
       
       const userRef = doc(db, 'users', user.uid);
@@ -68,7 +79,6 @@ export default function Login() {
       navigate('/');
     } catch (error) {
       if (error.code === 'auth/popup-blocked') {
-        toast.loading('Popup blocked by browser. Redirecting to GitHub...', { duration: 3000 });
         await signInWithRedirect(auth, githubProvider);
       } else {
         toast.error(error.message || 'GitHub Sign-In failed.');
@@ -79,9 +89,15 @@ export default function Login() {
   };
 
   const handleAdminGoogleLogin = async () => {
+    setLoading(true);
     try {
+      if (isMobileOrFirefox()) {
+        toast.loading('Redirecting to Google...', { duration: 2000 });
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+
       const result = await signInWithPopup(auth, googleProvider);
-      setLoading(true);
       const user = result.user;
       
       const userRef = doc(db, 'users', user.uid);
@@ -113,7 +129,6 @@ export default function Login() {
       }
     } catch (error) {
       if (error.code === 'auth/popup-blocked') {
-        toast.loading('Popup blocked by browser. Redirecting to Google...', { duration: 3000 });
         await signInWithRedirect(auth, googleProvider);
       } else {
         toast.error(error.message || 'Google Sign-In failed.');

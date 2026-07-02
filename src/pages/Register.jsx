@@ -27,6 +27,11 @@ export default function Register() {
     }
   }, [currentUser, userData, navigate]);
 
+  const isMobileOrFirefox = () => {
+    const ua = navigator.userAgent.toLowerCase();
+    return /iphone|ipad|ipod|android|firefox/.test(ua);
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     
@@ -61,9 +66,15 @@ export default function Register() {
   };
 
   const handleGithubLogin = async () => {
+    setLoading(true);
     try {
+      if (isMobileOrFirefox()) {
+        toast.loading('Redirecting to GitHub...', { duration: 2000 });
+        await signInWithRedirect(auth, githubProvider);
+        return;
+      }
+
       const result = await signInWithPopup(auth, githubProvider);
-      setLoading(true);
       const user = result.user;
       
       const userRef = doc(db, 'users', user.uid);
@@ -83,7 +94,6 @@ export default function Register() {
       navigate('/');
     } catch (error) {
       if (error.code === 'auth/popup-blocked') {
-        toast.loading('Popup blocked by browser. Redirecting to GitHub...', { duration: 3000 });
         await signInWithRedirect(auth, githubProvider);
       } else {
         toast.error(error.message || 'GitHub Sign-In failed.');
