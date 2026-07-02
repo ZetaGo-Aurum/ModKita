@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, githubProvider, db } from '../firebase/config';
-import { createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -26,11 +26,6 @@ export default function Register() {
       }
     }
   }, [currentUser, userData, navigate]);
-
-  const isMobileOrFirefox = () => {
-    const ua = navigator.userAgent.toLowerCase();
-    return /iphone|ipad|ipod|android|firefox/.test(ua);
-  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -65,42 +60,37 @@ export default function Register() {
     }
   };
 
-  const handleGithubLogin = async () => {
+  const handleGithubLogin = () => {
+    // Call signInWithPopup immediately and synchronously in the click handler
+    // to prevent browser popup blockers from flagging it.
+    const popupPromise = signInWithPopup(auth, githubProvider);
     setLoading(true);
-    try {
-      if (isMobileOrFirefox()) {
-        toast.loading('Redirecting to GitHub...', { duration: 2000 });
-        await signInWithRedirect(auth, githubProvider);
-        return;
-      }
 
-      const result = await signInWithPopup(auth, githubProvider);
-      const user = result.user;
-      
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
+    popupPromise
+      .then(async (result) => {
+        const user = result.user;
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
 
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          email: user.email || user.providerData[0]?.email || 'github-user',
-          role: 'member',
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        });
-        toast.success('Registration via GitHub successful! Please wait for Admin approval.');
-      } else {
-        toast.success(t('login_title'));
-      }
-      navigate('/');
-    } catch (error) {
-      if (error.code === 'auth/popup-blocked') {
-        await signInWithRedirect(auth, githubProvider);
-      } else {
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            email: user.email || user.providerData[0]?.email || 'github-user',
+            role: 'member',
+            status: 'pending',
+            createdAt: new Date().toISOString()
+          });
+          toast.success('Registration via GitHub successful! Please wait for Admin approval.');
+        } else {
+          toast.success(t('login_title'));
+        }
+        navigate('/');
+      })
+      .catch((error) => {
         toast.error(error.message || 'GitHub Sign-In failed.');
-      }
-    } finally {
-      setLoading(false);
-    }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   return (

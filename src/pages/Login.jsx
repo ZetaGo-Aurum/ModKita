@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, googleProvider, githubProvider, db } from '../firebase/config';
-import { signInWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -26,11 +26,6 @@ export default function Login() {
     }
   }, [currentUser, userData, navigate]);
 
-  const isMobileOrFirefox = () => {
-    const ua = navigator.userAgent.toLowerCase();
-    return /iphone|ipad|ipod|android|firefox/.test(ua);
-  };
-
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     if (!email.endsWith('.mod')) {
@@ -50,92 +45,81 @@ export default function Login() {
     }
   };
 
-  const handleGithubLogin = async () => {
+  const handleGithubLogin = () => {
+    // Call signInWithPopup immediately and synchronously in the click handler
+    // to prevent browser popup blockers from flagging it as a background process.
+    const popupPromise = signInWithPopup(auth, githubProvider);
     setLoading(true);
-    try {
-      if (isMobileOrFirefox()) {
-        toast.loading('Redirecting to GitHub...', { duration: 2000 });
-        await signInWithRedirect(auth, githubProvider);
-        return;
-      }
 
-      const result = await signInWithPopup(auth, githubProvider);
-      const user = result.user;
-      
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
+    popupPromise
+      .then(async (result) => {
+        const user = result.user;
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
 
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          email: user.email || user.providerData[0]?.email || 'github-user',
-          role: 'member',
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        });
-        toast.success('Registration via GitHub successful! Please wait for Admin approval.');
-      } else {
-        toast.success(t('login_title'));
-      }
-      navigate('/');
-    } catch (error) {
-      if (error.code === 'auth/popup-blocked') {
-        await signInWithRedirect(auth, githubProvider);
-      } else {
-        toast.error(error.message || 'GitHub Sign-In failed.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdminGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      if (isMobileOrFirefox()) {
-        toast.loading('Redirecting to Google...', { duration: 2000 });
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
-
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        if (user.email === 'deltaastra24@gmail.com') { 
+        if (!userSnap.exists()) {
           await setDoc(userRef, {
-            email: user.email,
-            role: 'dev',
-            status: 'approved',
+            email: user.email || user.providerData[0]?.email || 'github-user',
+            role: 'member',
+            status: 'pending',
             createdAt: new Date().toISOString()
           });
-          toast.success('Dev Admin initialized.');
-          navigate('/admin');
+          toast.success('Registration via GitHub successful! Please wait for Admin approval.');
         } else {
-          await auth.signOut();
-          toast.error('Access Denied. Only authorized admins can use Google Sign-In.');
+          toast.success(t('login_title'));
         }
-      } else {
-        const userData = userSnap.data();
-        if (userData.role === 'admin' || userData.role === 'dev') {
-          toast.success('Welcome, Admin.');
-          navigate('/admin');
+        navigate('/');
+      })
+      .catch((error) => {
+        toast.error(error.message || 'GitHub Sign-In failed.');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  const handleAdminGoogleLogin = () => {
+    // Call signInWithPopup synchronously to bypass browser popup restrictions.
+    const popupPromise = signInWithPopup(auth, googleProvider);
+    setLoading(true);
+
+    popupPromise
+      .then(async (result) => {
+        const user = result.user;
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+          if (user.email === 'deltaastra24@gmail.com') { 
+            await setDoc(userRef, {
+              email: user.email,
+              role: 'dev',
+              status: 'approved',
+              createdAt: new Date().toISOString()
+            });
+            toast.success('Dev Admin initialized.');
+            navigate('/admin');
+          } else {
+            await auth.signOut();
+            toast.error('Access Denied. Only authorized admins can use Google Sign-In.');
+          }
         } else {
-          await auth.signOut();
-          toast.error('Access Denied. Your account does not have admin privileges.');
+          const userData = userSnap.data();
+          if (userData.role === 'admin' || userData.role === 'dev') {
+            toast.success('Welcome, Admin.');
+            navigate('/admin');
+          } else {
+            await auth.signOut();
+            toast.error('Access Denied. Your account does not have admin privileges.');
+          }
         }
-      }
-    } catch (error) {
-      if (error.code === 'auth/popup-blocked') {
-        await signInWithRedirect(auth, googleProvider);
-      } else {
+      })
+      .catch((error) => {
         toast.error(error.message || 'Google Sign-In failed.');
-      }
-    } finally {
-      setLoading(false);
-    }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   return (
