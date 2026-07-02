@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, googleProvider, githubProvider, db } from '../firebase/config';
 import { signInWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
@@ -6,13 +6,25 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
+  const { currentUser, userData } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (currentUser && userData) {
+      if (userData.role === 'admin' || userData.role === 'dev') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
+    }
+  }, [currentUser, userData, navigate]);
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();

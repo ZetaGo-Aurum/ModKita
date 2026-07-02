@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, githubProvider, db } from '../firebase/config';
 import { createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
@@ -6,14 +6,26 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
+  const { currentUser, userData } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (currentUser && userData) {
+      if (userData.role === 'admin' || userData.role === 'dev') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
+    }
+  }, [currentUser, userData, navigate]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
