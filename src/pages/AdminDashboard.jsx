@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { collection, query, onSnapshot, doc, updateDoc, addDoc, deleteDoc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { uploadFileToB2, deleteFileFromB2 } from '../lib/b2Storage';
 import { uploadFileToCloudinary } from '../lib/cloudinaryStorage';
@@ -158,10 +158,7 @@ export default function AdminDashboard() {
       } else {
         coverStoragePath = `covers/${timestamp}_${coverFile.name}`;
         const coverRef = ref(storage, coverStoragePath);
-        const coverTask = uploadBytesResumable(coverRef, coverFile);
-        await new Promise((resolve, reject) => {
-          coverTask.on('state_changed', () => {}, reject, resolve);
-        });
+        await uploadBytes(coverRef, coverFile);
         coverUrl = await getDownloadURL(coverRef);
       }
       setUploadProgress(30);
@@ -175,10 +172,7 @@ export default function AdminDashboard() {
         } else {
           videoStoragePath = `videos/${timestamp}_${videoFile.name}`;
           const videoRef = ref(storage, videoStoragePath);
-          const videoTask = uploadBytesResumable(videoRef, videoFile);
-          await new Promise((resolve, reject) => {
-            videoTask.on('state_changed', () => {}, reject, resolve);
-          });
+          await uploadBytes(videoRef, videoFile);
           videoUrl = await getDownloadURL(videoRef);
         }
       }
