@@ -27,22 +27,24 @@ export default function Uptime() {
   
   const [logs, setLogs] = useState([]);
   const [nextScanProgress, setNextScanProgress] = useState(0);
-  const terminalEndRef = useRef(null);
+  const terminalContainerRef = useRef(null);
 
-  const addLog = (message, type = 'info') => {
+  // Store translation keys and parameters to support real-time language toggling inside logs
+  const addLog = (key, params = {}, type = 'info') => {
     const time = new Date().toLocaleTimeString();
-    setLogs(prev => [...prev.slice(-49), { time, message, type }]); // Keep last 50 logs
+    setLogs(prev => [...prev.slice(-49), { time, key, params, type }]); // Keep last 50 logs
   };
 
+  // Performant internal container scrolling instead of window.scrollIntoView
   useEffect(() => {
-    if (terminalEndRef.current) {
-      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (terminalContainerRef.current) {
+      terminalContainerRef.current.scrollTop = terminalContainerRef.current.scrollHeight;
     }
   }, [logs]);
 
   useEffect(() => {
     const checkServices = async () => {
-      addLog('Initiating full system diagnostic scan...', 'info');
+      addLog('uptime_scan_init', {}, 'info');
 
       const measurePing = async (fn, key, displayName) => {
         const start = performance.now();
@@ -62,10 +64,10 @@ export default function Uptime() {
             };
           });
           
-          addLog(`Service [${displayName}] ping successful. Latency: ${latency}ms`, 'success');
+          addLog('uptime_ping_success', { name: displayName, latency: latency }, 'success');
         } catch (e) {
           setStatus(prev => ({ ...prev, [key]: 'offline' }));
-          addLog(`CRITICAL: Service [${displayName}] check failed. Target unreachable.`, 'error');
+          addLog('uptime_ping_fail', { name: displayName }, 'error');
         }
       };
 
@@ -191,7 +193,7 @@ export default function Uptime() {
         {/* Latency line & SVG Chart */}
         <div className="border-t border-outline-variant/10 pt-3">
           <div className="flex justify-between items-center text-xs font-mono">
-            <span className="text-outline">Latency Trend</span>
+            <span className="text-outline">{t('uptime_latency_trend')}</span>
             <span className={state === 'online' ? "text-primary font-bold" : "text-outline"}>
               {state === 'online' ? `${latency}ms` : '---'}
             </span>
@@ -209,7 +211,7 @@ export default function Uptime() {
       exit={{ opacity: 0 }}
       className="max-w-6xl mx-auto py-12 px-4"
     >
-      {/* Real-time Scan Progress Bar (Fixed at top of content) */}
+      {/* Real-time Scan Progress Bar */}
       <div className="w-full h-1 bg-surface-variant/20 rounded-full overflow-hidden mb-8 relative">
         <div 
           className="h-full bg-primary shadow-[0_0_10px_rgba(168,199,250,0.8)] transition-all duration-100 ease-linear"
@@ -231,11 +233,11 @@ export default function Uptime() {
         >
           <Cpu size={48} className="text-primary drop-shadow-[0_0_15px_rgba(168,199,250,0.8)]" />
         </motion.div>
-        <h1 className="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-on-surface via-primary to-on-surface mb-4 tracking-tighter">
-          Network & Systems
+        <h1 className="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-on-surface via-primary to-on-surface mb-4 tracking-tighter animate-gradient-x">
+          {t('uptime_title')}
         </h1>
         <p className="text-on-surface-variant text-base font-medium max-w-xl mx-auto">
-          Comprehensive real-time telemetry of ModKita's core infrastructure, CDNs, and database clusters.
+          {t('uptime_desc')}
         </p>
       </div>
 
@@ -258,7 +260,7 @@ export default function Uptime() {
         <div className="bg-surface border-b border-outline-variant/20 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Terminal size={16} className="text-primary" />
-            <span className="font-bold text-on-surface">Telemetry Terminal Output</span>
+            <span className="font-bold text-on-surface">{t('uptime_terminal_title')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full bg-error/40 border border-error/50" />
@@ -266,7 +268,10 @@ export default function Uptime() {
             <span className="w-3 h-3 rounded-full bg-emerald-500/40 border border-emerald-500/50" />
           </div>
         </div>
-        <div className="p-6 h-56 overflow-y-auto space-y-1.5 custom-scrollbar text-xs">
+        <div 
+          ref={terminalContainerRef}
+          className="p-6 h-56 overflow-y-auto space-y-1.5 custom-scrollbar text-xs scroll-smooth"
+        >
           {logs.map((log, idx) => (
             <div key={idx} className="flex items-start gap-3">
               <span className="text-outline shrink-0">[{log.time}]</span>
@@ -275,14 +280,13 @@ export default function Uptime() {
                 log.type === 'error' ? 'text-error font-bold' :
                 'text-primary/90'
               }>
-                {log.message}
+                {t(log.key, log.params)}
               </span>
             </div>
           ))}
           {logs.length === 0 && (
-            <div className="text-outline animate-pulse">Awaiting diagnostic sequence...</div>
+            <div className="text-outline animate-pulse">{t('uptime_awaiting')}</div>
           )}
-          <div ref={terminalEndRef} />
         </div>
       </motion.div>
       
@@ -292,7 +296,7 @@ export default function Uptime() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
           </span>
-          Live monitoring active. Auto-refreshing every 5s.
+          {t('uptime_active_monitor')}
         </div>
       </div>
     </motion.div>

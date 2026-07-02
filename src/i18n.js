@@ -97,7 +97,21 @@ const resources = {
       "whitelisted_admins": "Admin yang Terdaftar (Whitelisted)",
       "added_date": "Tanggal Ditambahkan",
       "btn_remove_whitelist": "Hapus Whitelist",
-      "no_whitelisted_admins": "Belum ada admin yang terdaftar. Developer default adalah deltaastra24@gmail.com"
+      "no_whitelisted_admins": "Belum ada admin yang terdaftar. Developer default adalah deltaastra24@gmail.com",
+
+      // Uptime Telemetry
+      "uptime_title": "Jaringan & Sistem",
+      "uptime_desc": "Telemetri real-time komprehensif dari infrastruktur inti ModKita, CDN, dan cluster database.",
+      "uptime_latency_trend": "Tren Latensi",
+      "uptime_operational": "Operasional",
+      "uptime_checking": "Memeriksa",
+      "uptime_outage": "Terputus",
+      "uptime_terminal_title": "Output Terminal Telemetri",
+      "uptime_scan_init": "Memulai pemindaian diagnostik sistem penuh...",
+      "uptime_ping_success": "Ping layanan [{{name}}] sukses. Latensi: {{latency}}ms",
+      "uptime_ping_fail": "KRITIKAL: Pemeriksaan layanan [{{name}}] gagal. Target tidak terjangkau.",
+      "uptime_active_monitor": "Pemantauan langsung aktif. Segar otomatis setiap 5s.",
+      "uptime_awaiting": "Menunggu urutan diagnostik..."
     }
   },
   en: {
@@ -195,7 +209,21 @@ const resources = {
       "whitelisted_admins": "Whitelisted Admins",
       "added_date": "Added Date",
       "btn_remove_whitelist": "Remove Whitelist",
-      "no_whitelisted_admins": "No whitelisted admins yet. Default Dev is deltaastra24@gmail.com"
+      "no_whitelisted_admins": "No whitelisted admins yet. Default Dev is deltaastra24@gmail.com",
+
+      // Uptime Telemetry
+      "uptime_title": "Network & Systems",
+      "uptime_desc": "Comprehensive real-time telemetry of ModKita's core infrastructure, CDNs, and database clusters.",
+      "uptime_latency_trend": "Latency Trend",
+      "uptime_operational": "Operational",
+      "uptime_checking": "Checking",
+      "uptime_outage": "Outage",
+      "uptime_terminal_title": "Telemetry Terminal Output",
+      "uptime_scan_init": "Initiating full system diagnostic scan...",
+      "uptime_ping_success": "Service [{{name}}] ping successful. Latency: {{latency}}ms",
+      "uptime_ping_fail": "CRITICAL: Service [{{name}}] check failed. Target unreachable.",
+      "uptime_active_monitor": "Live monitoring active. Auto-refreshing every 5s.",
+      "uptime_awaiting": "Awaiting diagnostic sequence..."
     }
   }
 };
