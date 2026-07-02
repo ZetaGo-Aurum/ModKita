@@ -9,7 +9,7 @@ const firebaseConfig = {
   authDomain: "mods-7c70d.firebaseapp.com",
   databaseURL: "https://mods-7c70d-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "mods-7c70d",
-  storageBucket: "mods-7c70d.firebasestorage.app",
+  storageBucket: "mods-7c70d.appspot.com",
   messagingSenderId: "884157337235",
   appId: "1:884157337235:web:cc8269c61597fd0e178766",
   measurementId: "G-RFFPD91WNZ"
